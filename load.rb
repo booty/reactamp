@@ -6,6 +6,9 @@ require "active_support/core_ext/string" # for snake_casing
 require "sqlite3"
 require "csv"
 
+puts "Decompressing..."
+`bzip2 --keep --decompress Library.xml.bz2`
+
 xml = Nokogiri::XML(File.open("Library.xml"))
 
 list = []
@@ -60,8 +63,8 @@ fields_snake = fields
 #
 
 fields = fields.to_a
-puts "fields: #{fields}"
-puts "fields_snake: #{fields_snake}"
+# puts "fields: #{fields}"
+# puts "fields_snake: #{fields_snake}"
 
 CSV.open("yourmom.csv", "w", col_sep: "\t") do |csv|
   csv << fields_snake
@@ -72,7 +75,9 @@ CSV.open("yourmom.csv", "w", col_sep: "\t") do |csv|
       # binding.pry
       row << xml_track[fields[index]]
     end
-    binding.pry
+    # binding.pry
     csv << row
   end
 end
+
+`rm Library.xml`
