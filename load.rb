@@ -63,6 +63,12 @@ class Importer
   private_class_method def self.create_table(library)
     puts "Creating or recreating database table... "
     db.execute("drop table if exists #{DATABASE_TABLE_NAME};")
+    # This is unnecessary, as Sqlite3's CSV import will create
+    # the table and column names based on the header row in the CSV.
+    # However, might want to reinstate this to enforce proper column
+    # types and create indexes here, rather than doing it later
+    # thru migrations
+    #
     # fuck = <<~SQL
     #   create table #{DATABASE_TABLE_NAME} (
     #     #{fields(library)
