@@ -7,7 +7,7 @@ require "sqlite3"
 require "csv"
 
 class Importer
-  DB_FILE_NAME = "reactamp.db"
+  DB_FILE_NAME = "reactamp-pristine.sqlite3"
   COMPRESSED_LIBRARY_FILE_NAME = "Library.xml.bz2"
   UNCOMPRESSED_LIBRARY_FILE_NAME = "Library.xml"
   CSV_FILE_NAME = "Library.csv"
@@ -21,7 +21,7 @@ class Importer
     import_csv(library)
     # TODO: create db indexes on useful fields
   ensure
-    clean_up_files
+    # clean_up_files
   end
 
   private_class_method def self.clean_up_files
@@ -128,5 +128,3 @@ class Importer
     puts "done"
   end
 end
-
-Importer.import
