@@ -12,7 +12,7 @@ class Importer
   UNCOMPRESSED_LIBRARY_FILE_NAME = "Library.xml"
   CSV_FILE_NAME = "Library.csv"
   IMPORT_RECORD_LIMIT = 9999999
-  DATABASE_TABLE_NAME = "library"
+  DATABASE_TABLE_NAME = "tracks"
   PROGRESS_EVERY_N_TRACKS = 5000
 
   def self.import
@@ -124,7 +124,9 @@ class Importer
   private_class_method def self.import_csv(library)
     create_table(library)
     print "Importing to sqlite... "
-    `sqlite3 reactamp.db  -separator $'\t' ".import Library.csv #{DATABASE_TABLE_NAME}"`
+    `sqlite3 #{DB_FILE_NAME} -separator $'\t' ".import Library.csv #{DATABASE_TABLE_NAME}"`
     puts "done"
   end
 end
+
+Importer.import
