@@ -6,78 +6,121 @@ require "active_support/core_ext/string" # for snake_casing
 require "sqlite3"
 require "csv"
 
-puts "Decompressing..."
-`bzip2 --keep --decompress Library.xml.bz2`
+class Importer
+  DB_FILE_NAME = "reactamp.db"
+  COMPRESSED_LIBRARY_FILE_NAME = "Library.xml.bz2"
+  UNCOMPRESSED_LIBRARY_FILE_NAME = "Library.xml"
+  CSV_FILE_NAME = "Library.csv"
+  IMPORT_RECORD_LIMIT = 9999999
+  DATABASE_TABLE_NAME = "library"
+  PROGRESS_EVERY_N_TRACKS = 5000
 
-xml = Nokogiri::XML(File.open("Library.xml"))
+  def self.import
+    library = get_library
+    dump_csv(library)
+    import_csv(library)
+    # TODO: create db indexes on useful fields
+  ensure
+    clean_up_files
+  end
 
-list = []
+  private_class_method def self.clean_up_files
+    puts "Cleaning up..."
+    `rm #{UNCOMPRESSED_LIBRARY_FILE_NAME}`
+    `rm #{CSV_FILE_NAME}`
+  end
 
-# Find each dictionary item and loop through it
-xml.xpath("/plist/dict/dict/dict").take(3).each_with_index do |node, parent_index|
-  hash     = {}
-  last_key = nil
-  puts "Parsed #{parent_index}" if (parent_index % 100).zero?
+  # returns decompressed library XML as a hash
+  private_class_method def self.get_library
+    puts "Decompressing xml..."
+    `bzip2 --keep --decompress #{COMPRESSED_LIBRARY_FILE_NAME}`
 
-  # Stuff the key value pairs in to hash.  We know a key is followed by
-  # a value, so we'll just skip blank nodes, save the key, then when we
-  # find the value, add it to the hash
-  node.children.each_with_index do |child, child_index|
-    puts "    Parsed #{child_index}" if child_index.positive? && (child_index % 100).zero?
-    next if child.blank? # Don't care about blank nodes
+    xml = Nokogiri::XML(File.open(UNCOMPRESSED_LIBRARY_FILE_NAME))
 
-    if child.name == 'key'
-      # Save off the key
-      last_key = child.text
-    else
-      # Use the key we saved
-      hash[last_key] = child.text
+    # Find each dictionary item and loop through it
+    xml.xpath("/plist/dict/dict/dict").take(IMPORT_RECORD_LIMIT).each_with_object(Array.new) do |node, list|
+      hash     = {}
+      last_key = nil
+      puts "Parsed #{list.length}" if list.length.positive? && (list.length % PROGRESS_EVERY_N_TRACKS).zero?
+
+      node.children.each do |child|
+        next if child.blank?
+
+        if child.name == "key"
+          last_key = child.text
+        else
+          hash[last_key] = child.text
+        end
+      end
+      list << hash # push on to our list
     end
   end
 
-  list << hash # push on to our list
-end
+  private_class_method def self.db
+    @@db ||= SQLite3::Database.new(DB_FILE_NAME)
+  end
 
+  private_class_method def self.create_table(library)
+    puts "Creating or recreating database table... "
+    db.execute("drop table if exists #{DATABASE_TABLE_NAME};")
+    # fuck = <<~SQL
+    #   create table #{DATABASE_TABLE_NAME} (
+    #     #{fields(library)
+    #         .map(&:underscore)
+    #         .map { |x| "#{x.gsub(/\s/, '_')} varchar" }
+    #         .join(",\n")
+    #     }
+    #   );
+    # SQL
+    # puts fuck
+    # db.execute(fuck)
+  end
 
-# make da table
-
-fields = Set.new
-list.take(3).each { |x| fields += x.keys }
-fields_snake = fields
-  .map(&:underscore)
-  .map { |x| x.gsub(/\s/, "_") }
-
-# list.each { |x| fields += x.keys }
-# fuck = <<~SQL.squish
-#   drop table if exists tracks;
-#   create table tracks (
-#     #{fields
-#         .map(&:underscore)
-#         .map { |x| "#{x.gsub(/\s/, '_')} varchar" }
-#         .join(",\n")
-#     }
-#   );
-# SQL
-
-# db.execute(fuck)
-#
-
-fields = fields.to_a
-# puts "fields: #{fields}"
-# puts "fields_snake: #{fields_snake}"
-
-CSV.open("yourmom.csv", "w", col_sep: "\t") do |csv|
-  csv << fields_snake
-  list.take(3).each do |xml_track|
-    row = []
-    fields.each_with_index do |field, index|
-      # puts "   field: #{field} index: #{index}"
-      # binding.pry
-      row << xml_track[fields[index]]
+  private_class_method def self.fields(library)
+    @@fields ||= begin
+        result = Set.new
+        library.each do |x|
+          result += x.keys
+        end
+        result = result.to_a
     end
-    # binding.pry
-    csv << row
+  end
+
+  private_class_method def self.fields_snake(library)
+    @@fields_snake ||= begin
+      fields(library)
+        .map(&:underscore)
+        .map { |x| x.gsub(/\s/, "_") }
+    end
+  end
+
+  private_class_method def self.fields_header(library)
+    result = fields_snake(library).dup
+    result[0] = "id"
+    result
+  end
+
+  private_class_method def self.dump_csv(library)
+    print "Dumping CSV... "
+    CSV.open(CSV_FILE_NAME, "w", col_sep: "\t") do |csv|
+      csv << fields_header(library)
+      library.each do |xml_track|
+        row = []
+        fields(library).each_with_index do |field, index|
+        row << xml_track[fields(library)[index]]
+      end
+      csv << row
+      end
+    end
+    puts "done"
+  end
+
+  private_class_method def self.import_csv(library)
+    create_table(library)
+    print "Importing to sqlite... "
+    `sqlite3 reactamp.db  -separator $'\t' ".import Library.csv #{DATABASE_TABLE_NAME}"`
+    puts "done"
   end
 end
 
-`rm Library.xml`
+Importer.import
