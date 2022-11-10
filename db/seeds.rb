@@ -8,18 +8,8 @@
 
 
 # Does the pristine database exist? If not, create it
+Importer.recreate_pristine unless Importer.pristine_exists?
+Importer.load_tracks_from_pristine
 
-# require_relative "import.rb"
-# if File.exist?("db/#{Importer::DB_FILE_NAME}")
-#   puts "Pristine database exists; cool."
-# else
-#   puts "Pristine database doesn't exist; will import."
-#   Importer.import
-# end
 
-# # Rename the existing database
-# puts "Renaming existing database if it exists
-# `mv db/#{Rails.env}.sqlite3 db/#{Rails.env}.#{Time.current.iso8601.gsub(":","")}.sqlite3`
-
-# # Copy over the pristine database
 
