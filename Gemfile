@@ -59,6 +59,9 @@ group :development, :test do
 end
 
 group :development do
+  # Handy data definitions on models!
+  gem "annotate"
+
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
 
