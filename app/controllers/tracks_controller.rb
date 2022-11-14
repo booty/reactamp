@@ -4,7 +4,7 @@ class TracksController < ApplicationController
   def index
     query = params[:query]
     @tracks = if params[:query]
-      Track.search(query)
+      Track.search(query).first(200)
     else
       Track.
         order(:artist, :album, :track_number, :name).

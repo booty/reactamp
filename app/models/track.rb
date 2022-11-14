@@ -43,10 +43,10 @@ class Track < ApplicationRecord
     search_results.sort_by do |sr|
       [
         0 - sr.score,
-        sr.track.sort_artist,
-        sr.track.sort_album,
+        sr.track.artist,
+        sr.track.album,
         sr.track.track_number,
-        sr.track.sort_name
+        sr.track.name
       ]
     end
   end
