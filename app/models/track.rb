@@ -31,7 +31,7 @@ class Track < ApplicationRecord
         track_attribute = sr.track.attributes[a].to_s.downcase
         next unless track_attribute.include?(query)
         if track_attribute == query
-          sr.score += 100
+          sr.score += 200
         elsif track_attribute.starts_with?(query)
           sr.score += 50
         elsif track_attribute.include?(query)
@@ -40,10 +40,14 @@ class Track < ApplicationRecord
       end
     end
 
-    search_results.
-      sort{ |left, right| left.score <=> right.score}.
-      sort{ |left, right| left.track.artist <=> right.track.artist}.
-      sort{ |left, right| left.track.album <=> right.track.album}.
-      sort{ |left, right| left.track.track_number.to_i <=> right.track.track_number.to_i}
+    search_results.sort_by do |sr|
+      [
+        0 - sr.score,
+        sr.track.sort_artist,
+        sr.track.sort_album,
+        sr.track.track_number,
+        sr.track.sort_name
+      ]
+    end
   end
 end
