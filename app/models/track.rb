@@ -3,10 +3,10 @@
 class Track < ApplicationRecord
   SearchResult = Struct.new("SearchResult", :score, :track)
 
-  def self.search(query)
-    query = query.downcase
+  def self.search(search_string)
+    search_string = search_string.downcase
 
-    sql_query = "%#{query}%"
+    sql_query = "%#{search_string}%"
     result_tracks = Track.where("name like ?", sql_query).or(
       where("artist like ?", sql_query).or(
         where("album like ?", sql_query).or(
@@ -15,7 +15,7 @@ class Track < ApplicationRecord
       ).all
     ).to_a
 
-    order_search_results(result_tracks, query)
+    order_search_results(result_tracks, search_string)
   end
 
   private
@@ -43,10 +43,10 @@ class Track < ApplicationRecord
     search_results.sort_by do |sr|
       [
         0 - sr.score,
-        sr.track.artist,
-        sr.track.album,
-        sr.track.track_number,
-        sr.track.name
+        sr.track.artist || "",
+        sr.track.album || "",
+        sr.track.track_number || 0,
+        sr.track.name || ""
       ]
     end
   end
